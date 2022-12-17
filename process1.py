@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import getopt
 import zipfile
 import tempfile
 import os
@@ -37,7 +38,7 @@ def process_zip(fn): #XXX unused
                 else:
                     zout.writestr(item, zin.read(item))
 
-    filename = "translated_ebook.epub"
+    filename = "bi.epub"
     os.rename(tmpname, filename)
 
 
@@ -94,17 +95,24 @@ def bilang_html(html, lookups):
     body = soup.body
     counter = 1
     inserts = []
-    for child in [x for x in body.children if not isinstance(x, NavigableString)]:
-        txt = "".join(child.findAll(text=True, recursive=True))
+    for child in body.children:
         counter += 1
+        if isinstance(child, NavigableString):
+            continue
+        txt = "".join(child.findAll(text=True, recursive=True))
+        if not txt:
+            continue
         key = generate_key(txt)
         #XXX make italic, add spacing
-        translated = copy.copy(child)
+        copied = soup.new_tag(child.name)
+        translated = soup.new_tag("i") #XXX add classes
+        #translated = copy.copy(child)
         try:
           translated.string = lookups[key]
         except Exception:
-            print("%s: %s" % (key, translated.string))
-        inserts.insert(0, (counter, translated))
+            print("NOT FOUND: %s: %s" % (key, translated.string))
+        copied.append(translated)
+        inserts.insert(0, (counter, copied))
     for insert in inserts:
         body.insert(insert[0], insert[1])
         #XXX
@@ -130,7 +138,7 @@ def build_bilang(fn, lookup_fn):
     lookups = build_lookup(lookup_fn)
     counter = 1
     with zipfile.ZipFile(fn, 'r') as zin:
-        with zipfile.ZipFile('bilan.epub', 'w') as zout:
+        with zipfile.ZipFile('bi.epub', 'w') as zout:
             for item in zin.namelist():
                 if not item.endswith('html'):
                     zout.writestr(item, zin.read(item))
@@ -142,7 +150,28 @@ def build_bilang(fn, lookup_fn):
 
 
 if __name__ == "__main__":
-    fn = sys.argv[1]
-    epub_to_txt(fn)
-    #lookup_fn = sys.argv[2]
-    #build_bilang(fn, lookup_fn)
+    args_list = sys.argv[1:]
+    opts = "ht:b"
+    long_opts = ["help", "txt=", "bi"]
+    args, vals = getopt.getopt(args_list, opts, long_opts)
+
+    help_string = """\
+CDB ebbok tools
+---------------
+
+Usage:
+    {this_file} -h | --help                            Display this message
+    {this_file} -t | --txt x.epub                      Generate pre-processed section[n].txt files for translation
+    {this_file} -b | --bi source.epub glossay.txt      Generate bilingual bi.epub from source and glossary
+"""
+    for arg, val in args:
+        if arg in ('-t', '--txt'):
+            fn = val
+            epub_to_txt(fn)
+            sys.exit(0)
+        if arg in ('-b', '--bi'):
+            source = vals[0]
+            glossary = vals[1]
+            build_bilang(source, glossary)
+            sys.exit(0)
+    sys.exit(help_string.format(this_file=sys.argv[0]))
