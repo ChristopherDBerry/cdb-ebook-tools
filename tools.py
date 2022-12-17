@@ -5,6 +5,7 @@ import getopt
 import zipfile
 import tempfile
 import os
+import re
 from hashlib import md5
 
 from bs4 import BeautifulSoup, NavigableString, Tag
@@ -83,6 +84,7 @@ def process_html(html):
     body = soup.body
     for child in [x for x in body.children if not isinstance(x, NavigableString)]:
         txt = "".join(child.findAll(text=True, recursive=True))
+        txt = re.sub('\n', ' ', txt)
         key = generate_key(txt)
         section = txt + "\n" + key
         output += section
@@ -100,6 +102,7 @@ def bilang_html(html, lookups):
         if isinstance(child, NavigableString):
             continue
         txt = "".join(child.findAll(text=True, recursive=True))
+        txt = re.sub('\n', ' ', txt)
         if not txt:
             continue
         key = generate_key(txt)
@@ -111,6 +114,7 @@ def bilang_html(html, lookups):
           translated.string = lookups[key]
         except Exception:
             print("NOT FOUND: %s: %s" % (key, translated.string))
+            continue
         copied.append(translated)
         inserts.insert(0, (counter, copied))
     for insert in inserts:

@@ -58,6 +58,7 @@ coverage.xml
 *.zip
 *.epub
 *.txt
+ebooks/
 
 # Junk
 dump/
