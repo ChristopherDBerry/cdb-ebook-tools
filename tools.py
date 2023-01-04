@@ -27,7 +27,8 @@ def epub_to_txt(fn, char_limit=999999):
             if item.endswith('html'):
                 text = zin.read(item)
                 text = text.decode('utf-8')
-                processed_text = process_html(text)
+                processed_text = process_html(text, 'chapter') #XXX typical gutenberg
+                #processed_text = process_html(text)
                 if len(processed_text) > char_limit:
                     raise Exception("%s has over %d characters" % (fn, char_limit) )
                 if len(processed_text) + len(output_text) > char_limit:
@@ -45,50 +46,55 @@ def epub_to_txt(fn, char_limit=999999):
             f.close()
 
 
-def process_html(html):
+def process_html(html, container_class=None):
     """convert html into .txt with hashes for each para"""
     output = ""
     soup = BeautifulSoup(html, 'html.parser')
-    top_container = soup.body #XXX Make settable in config
-    #top_containers = soup.find_all("div", {"class": "stylelistrow"})
-    #for container in [x for x in top_containers if not isinstance(x, NavigableString)]:
-    for child in [x for x in top_container.children if not isinstance(x, NavigableString)]:
-        txt = "".join(child.findAll(text=True, recursive=True))
-        txt = re.sub('\n', ' ', txt)
-        key = generate_key(txt)
-        section = txt + "\n" + key
-        output += section
-        output += DELIMITER
+    if not container_class:
+        top_containers = (soup.body, )
+    else:
+        top_containers = soup.find_all("div", {"class": container_class})
+    for top_container in [x for x in top_containers if not isinstance(x, NavigableString)]:
+        for child in [x for x in top_container.children if not isinstance(x, NavigableString)]:
+            txt = "".join(child.findAll(text=True, recursive=True))
+            txt = re.sub('\n', ' ', txt)
+            key = generate_key(txt)
+            section = txt + "\n" + key
+            output += section
+            output += DELIMITER
     return output
 
 
-def bilang_html(html, lookups):
+def bilang_html(html, lookups, container_class=None):
     """Add translated para to html"""
     soup = BeautifulSoup(html, 'html.parser')
-    top_container = soup.body #XXX Make settable in config
-    #top_containers = soup.find_all("div", {"class": "stylelistrow"})
+    if not container_class:
+        top_containers = (soup.body, )
+    else:
+        top_containers = soup.find_all("div", {"class": container_class})
     counter = 1
     inserts = []
-    for child in top_container.children:
-        counter += 1
-        if isinstance(child, NavigableString):
-            continue
-        txt = "".join(child.findAll(text=True, recursive=True))
-        txt = re.sub('\n', ' ', txt)
-        if not txt:
-            continue
-        key = generate_key(txt)
-        copied = soup.new_tag(child.name)
-        translated = soup.new_tag("i")
-        try:
-          translated.string = lookups[key]
-        except Exception:
-            sys.stderr.write("NOT FOUND: %s: %s" % (key, translated.string))
-            continue
-        copied.append(translated)
-        inserts.insert(0, (counter, copied))
-    for insert in inserts:
-        top_container.insert(*insert)
+    for top_container in [x for x in top_containers if not isinstance(x, NavigableString)]:
+        for child in top_container.children:
+            counter += 1
+            if isinstance(child, NavigableString):
+                continue
+            txt = "".join(child.findAll(text=True, recursive=True))
+            txt = re.sub('\n', ' ', txt)
+            if not txt:
+                continue
+            key = generate_key(txt)
+            copied = soup.new_tag(child.name)
+            translated = soup.new_tag("i")
+            try:
+                translated.string = lookups[key]
+            except Exception:
+                sys.stderr.write("NOT FOUND: %s: %s" % (key, translated.string))
+                continue
+            copied.append(translated)
+            inserts.insert(0, (counter, copied))
+        for insert in inserts:
+            top_container.insert(*insert)
     return soup.prettify()
 
 
@@ -119,7 +125,8 @@ def build_bilang(fn, lookup_fn):
                 else:
                     text = zin.read(item)
                     text = text.decode()
-                    translated_text = bilang_html(text, lookups)
+                    #translated_text = bilang_html(text, lookups)
+                    translated_text = bilang_html(text, lookups, 'chapter') #XXX typical gutenberg
                     zout.writestr(item, translated_text)
         sys.stderr.write('bi.epub done')
         zout.close()
@@ -128,7 +135,7 @@ def build_bilang(fn, lookup_fn):
 
 if __name__ == "__main__":
     args_list = sys.argv[1:]
-    opts = "ht:b"
+    opts = "ht:b" #XXX add a, analyze, display top div class
     long_opts = ["help", "txt=", "bi"]
     args, vals = getopt.getopt(args_list, opts, long_opts)
 
