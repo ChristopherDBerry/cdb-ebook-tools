@@ -57,8 +57,11 @@ coverage.xml
 # Working files
 *.zip
 *.epub
-*.txt
 ebooks/
+media/
+glossary/
+pre/
+resources/
 
 # Junk
 dump/

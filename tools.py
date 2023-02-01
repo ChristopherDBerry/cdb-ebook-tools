@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup, NavigableString, Tag
 import copy
 
 
-DELIMITER = "\n- - - - - - - - - - - - - - - - - - - -\n"
+DELIMITER = "\n<- - - - - - - - - - - - - - - - - - - ->\n"
 
 def generate_key(text):
     return '<' + md5(text.encode('utf-8')).hexdigest() + '>'
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     args, vals = getopt.getopt(args_list, opts, long_opts)
 
     help_string = """\
-CDB ebbok tools
+CDB ebook tools
 ---------------
 
 Usage:
